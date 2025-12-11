@@ -4,6 +4,60 @@ import { supabase } from "./supabaseClient";
 
 
 function App() {
+  const fetchAndSetProfile = async (userId) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("gender, interested, city, state")
+    .eq("id", userId)
+    .maybeSingle(); // returns null if no row
+
+  if (error) {
+    console.error("Error loading profile:", error);
+    return false;
+  }
+
+  if (!data) {
+    // no profile yet
+    return false;
+  }
+const fetchAndSetProfile = async (userId) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("gender, interested, city, state")
+    .eq("id", userId)
+    .maybeSingle(); // returns null if nothing
+
+  if (error) {
+    console.error("Error loading profile:", error);
+    return false;
+  }
+
+  if (!data) {
+    // no profile yet
+    return false;
+  }
+
+  setProfileData({
+    gender: data.gender || "",
+    interested: data.interested || "",
+    city: data.city || "",
+    state: data.state || "",
+  });
+
+  return true;
+};
+
+  // Fill React state with their saved profile
+  setProfileData({
+    gender: data.gender || "",
+    interested: data.interested || "",
+    city: data.city || "",
+    state: data.state || "",
+  });
+
+  return true;
+};
+
   const [currentPage, setCurrentPage] = useState("home");
   const [signupData, setSignupData] = useState({
     name: "",
@@ -315,12 +369,19 @@ function App() {
     loginData={loginData}
     onChange={handleLoginChange}
     onBackHome={() => setCurrentPage("home")}
-    onLoggedIn={(loggedInUserId) => {
+    onLoggedIn={async (loggedInUserId) => {
       setUserId(loggedInUserId);
-      setCurrentPage("profile"); // send them to profile after login
+      const hasProfile = await fetchAndSetProfile(loggedInUserId);
+
+      if (hasProfile) {
+        setCurrentPage("matches");   // skip profile, go straight to matches
+      } else {
+        setCurrentPage("profile");   // first-timer: show profile form
+      }
     }}
   />
 )}
+
 
         {currentPage === "signup" && (
   <SignupForm
