@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import { supabase } from "./supabaseClient";
+
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -21,11 +22,77 @@ function App() {
     email: "",
     password: "",
   });
+  useEffect(() => {
+    let mounted = true;
+
+    const initAuth = async () => {
+      // 1) Check current session (user stays logged in across refresh)
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("Error getting session:", error);
+        return;
+      }
+
+      if (session && session.user && mounted) {
+        setUserId(session.user.id);
+
+        // If we're sitting on the home page, send them to matches
+        setCurrentPage((prev) => (prev === "home" ? "matches" : prev));
+      }
+
+      // 2) Listen for future auth changes (login / logout)
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        if (!mounted) return;
+
+        if (newSession && newSession.user) {
+          setUserId(newSession.user.id);
+          setCurrentPage((prev) =>
+            prev === "home" || prev === "login" ? "matches" : prev
+          );
+        } else {
+          // logged out
+          setUserId(null);
+          setCurrentPage("home");
+        }
+      });
+
+      // Cleanup on unmount
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+
+    initAuth();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLoginChange = (field, value) => {
     setLoginData((prev) => ({ ...prev, [field]: value }));
   };
+ const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Error signing out:", err);
+    }
 
+    setUserId(null);
+    setLoginData({ email: "", password: "" });
+    // optional: clear signup/profile if you want
+    // setSignupData({ name: "", email: "", password: "" });
+    // setProfileData({ gender: "", interested: "", city: "", state: "" });
+
+    setCurrentPage("home");
+  };
 
 
   const handleSignupChange = (field, value) => {
@@ -39,7 +106,6 @@ function App() {
   return (
     <div className="page">
       <header className="header">
-  ...
   <div className="header-actions">
    
   </div>
@@ -52,14 +118,37 @@ function App() {
     </button>
   </div>
 
-  <div className="header-actions">
-    <button className="btn btn-ghost" onClick={() => setCurrentPage("login")}>
-      Log in
-    </button>
-    <button className="btn btn-primary" onClick={() => setCurrentPage("signup")}>
-      Join free
-    </button>
+   <div className="header-actions">
+    {userId ? (
+      <>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setCurrentPage("matches")}
+        >
+          Matches
+        </button>
+        <button className="btn btn-ghost" onClick={handleLogout}>
+          Log out
+        </button>
+      </>
+    ) : (
+      <>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setCurrentPage("login")}
+        >
+          Log in
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => setCurrentPage("signup")}
+        >
+          Join free
+        </button>
+      </>
+    )}
   </div>
+
 </header>
 
 
