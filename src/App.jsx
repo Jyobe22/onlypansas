@@ -22,6 +22,39 @@ function App() {
     email: "",
     password: "",
   });
+   useEffect(() => {
+    // Only try to load when we have a user and we're on the profile page
+    if (!userId || currentPage !== "profile") return;
+
+    const loadProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("gender, interested, city, state")
+          .eq("id", userId)
+          .single();
+
+        if (error) {
+          console.error("Error loading profile:", error);
+          return;
+        }
+
+        if (data) {
+          setProfileData({
+            gender: data.gender || "",
+            interested: data.interested || "",
+            city: data.city || "",
+            state: data.state || "",
+          });
+        }
+      } catch (err) {
+        console.error("Unexpected error loading profile:", err);
+      }
+    };
+
+    loadProfile();
+  }, [userId, currentPage]);
+
   useEffect(() => {
     let mounted = true;
 
